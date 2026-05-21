@@ -1,0 +1,51 @@
+name: Deploy jbis-screenshot to o2switch
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies (CI validation)
+        run: npm ci
+
+      - name: Validate entrypoint
+        run: node --check src/server.js
+
+      - name: Prepare deploy marker
+        run: |
+          mkdir -p tmp
+          echo "Build: ${{ github.sha }} - $(date -u +%Y-%m-%dT%H:%M:%SZ)" > tmp/restart.txt
+
+      # node_modules/ exclu : trop lourd en FTP (Puppeteer + Chromium).
+      # Sur le serveur o2switch, après déploiement :
+      #   cd ~/jbis/screenshot.jbis.cm && npm ci --omit=dev
+      # .env exclu pour ne pas écraser la prod (INTERNAL_TOKEN, PORT, PUPPETEER_NO_SANDBOX).
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: ./jbis/screenshot.jbis.cm/
+          local-dir: ./
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.github/**
+            .env
+            **/*.log
+            .DS_Store
