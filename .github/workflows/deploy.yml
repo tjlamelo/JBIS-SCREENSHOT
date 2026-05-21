@@ -34,14 +34,14 @@ jobs:
           rm -rf node_modules
           rm -rf .ftp-deploy-sync-state.json
 
-      # Déploiement en mode VERBOSE avec format d'exclusions corrigé
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: "./jbis/screenshot.jbis.cm/"
+          # Chemin absolu depuis la racine de ton compte principal sc1tcjo2411
+          server-dir: "./jbis/screenshot.jbis.cm/" 
           local-dir: "./"
           log-level: verbose
           exclude: |
