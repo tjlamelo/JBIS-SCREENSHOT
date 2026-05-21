@@ -34,7 +34,7 @@ jobs:
           rm -rf node_modules
           rm -rf .ftp-deploy-sync-state.json
 
-      # Déploiement en mode VERBOSE pour voir les logs système cachés
+      # Déploiement en mode VERBOSE avec format d'exclusions corrigé
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -43,13 +43,11 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: "./jbis/screenshot.jbis.cm/"
           local-dir: "./"
-          log-level: verbose # <--- C'EST ICI. Ça va forcer l'affichage complet de la poignée de main.
+          log-level: verbose
           exclude: |
-            [
-              "**/.git*",
-              "**/.git*/**",
-              "**/.github/**",
-              ".env",
-              "**/*.log",
-              ".DS_Store"
-            ]
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            .env
+            **/*.log
+            .DS_Store
