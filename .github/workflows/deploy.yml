@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22" # Passé en v22 pour corriger les alertes "Unsupported engine" de Puppeteer
+          node-version: "22"
           cache: npm
 
       - name: Install dependencies (CI validation)
@@ -29,21 +29,24 @@ jobs:
           mkdir -p tmp
           echo "Build: ${{ github.sha }} - $(date -u +%Y-%m-%dT%H:%M:%SZ)" > tmp/restart.txt
 
-      # Déploiement Rsync avec les bons noms de variables
-      - name: Deploy via SSH/Rsync to o2switch
-        uses: easingthemes/ssh-deploy@v5.1.0
-        with:
-          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }} # En minuscules pour cette action
-          remote_host: ${{ secrets.FTP_SERVER }}
-          remote_user: ${{ secrets.FTP_USERNAME }}
-          remote_port: 22
-          target: "./jbis/screenshot.jbis.cm/"
-          source: "./"
-          args: "-rlgoDIVzc --delete"
-          exclude: |
-            /.git/
-            /.github/
-            /node_modules/
-            /.env
-            /*.log
-            .DS_Store
+      # Configuration native de la clé SSH sur le runner GitHub
+      - name: Configure SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Ajoute automatiquement le serveur o2switch aux hôtes connus pour éviter le blocage interactif
+          ssh-keyscan -p 22 -H "${{ secrets.FTP_SERVER }}" >> ~/.ssh/known_hosts
+
+      # Déploiement natif avec rsync
+      - name: Deploy via Rsync
+        run: |
+          rsync -avz --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='node_modules/' \
+            --exclude='.env' \
+            --exclude='*.log' \
+            --exclude='.DS_Store' \
+            -e "ssh -p 22 -i ~/.ssh/id_ed25519" \
+            ./ ${{ secrets.FTP_USERNAME }}@${{ secrets.FTP_SERVER }}:./jbis/screenshot.jbis.cm/
