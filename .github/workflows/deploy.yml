@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22" # Aligné sur ta version locale
           cache: npm
 
       - name: Install dependencies (CI validation)
@@ -29,24 +29,23 @@ jobs:
           mkdir -p tmp
           echo "Build: ${{ github.sha }} - $(date -u +%Y-%m-%dT%H:%M:%SZ)" > tmp/restart.txt
 
-      # Configuration native de la clé SSH sur le runner GitHub
-      - name: Configure SSH Key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          # Ajoute automatiquement le serveur o2switch aux hôtes connus pour éviter le blocage interactif
-          ssh-keyscan -p 22 -H "${{ secrets.FTP_SERVER }}" >> ~/.ssh/known_hosts
+      # CRUCIAL : On supprime node_modules avant le scan FTP pour éviter le Timeout de 30s
+      - name: Clean heavy dependencies before deploy
+        run: rm -rf node_modules
 
-      # Déploiement natif avec rsync
-      - name: Deploy via Rsync
-        run: |
-          rsync -avz --delete \
-            --exclude='.git/' \
-            --exclude='.github/' \
-            --exclude='node_modules/' \
-            --exclude='.env' \
-            --exclude='*.log' \
-            --exclude='.DS_Store' \
-            -e "ssh -p 22 -i ~/.ssh/id_ed25519" \
-            ./ ${{ secrets.FTP_USERNAME }}@${{ secrets.FTP_SERVER }}:./jbis/screenshot.jbis.cm/
+      # Déploiement via FTP standard (Identique à tes autres pipelines fonctionnels)
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: ./jbis/screenshot.jbis.cm/
+          local-dir: ./
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            .env
+            **/*.log
+            .DS_Store
