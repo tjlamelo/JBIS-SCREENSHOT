@@ -29,23 +29,21 @@ jobs:
           mkdir -p tmp
           echo "Build: ${{ github.sha }} - $(date -u +%Y-%m-%dT%H:%M:%SZ)" > tmp/restart.txt
 
-      # node_modules/ exclu : trop lourd en FTP (Puppeteer + Chromium).
-      # Sur le serveur o2switch, après déploiement :
-      #   cd ~/jbis/screenshot.jbis.cm && npm ci --omit=dev
-      # .env exclu pour ne pas écraser la prod (INTERNAL_TOKEN, PORT, PUPPETEER_NO_SANDBOX).
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      # node_modules/ exclu : trop lourd (Puppeteer + Chromium).
+      # .env exclu pour ne pas écraser la prod.
+      - name: Deploy via SFTP to o2switch
+        uses: sshagency/sftp-deploy-action@v2.2.1
         with:
-          server: ${{ secrets.FTP_SERVER }}
+          host: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: ./jbis/screenshot.jbis.cm/
-          local-dir: ./
+          port: 22 # o2switch utilise le port 22 pour le SFTP
+          local-dir: './'
+          server-dir: './jbis/screenshot.jbis.cm/'
           exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/.github/**
+            .git
+            .github
+            node_modules
             .env
-            **/*.log
+            *.log
             .DS_Store
