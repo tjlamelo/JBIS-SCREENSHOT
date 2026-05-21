@@ -29,21 +29,21 @@ jobs:
           mkdir -p tmp
           echo "Build: ${{ github.sha }} - $(date -u +%Y-%m-%dT%H:%M:%SZ)" > tmp/restart.txt
 
-      # node_modules/ exclu : trop lourd (Puppeteer + Chromium).
-      # .env exclu pour ne pas écraser la prod.
-      - name: Deploy via SFTP to o2switch
-        uses: sshagency/sftp-deploy-action@v2.2.1
+      # Connexion SSH sécurisée vers o2switch via Rsync
+      - name: Deploy via SSH/Rsync to o2switch
+        uses: easingthemes/ssh-deploy@v5.1.0
         with:
-          host: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          port: 22 # o2switch utilise le port 22 pour le SFTP
-          local-dir: './'
-          server-dir: './jbis/screenshot.jbis.cm/'
-          exclude: |
-            .git
-            .github
-            node_modules
-            .env
-            *.log
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          ARGS: "-rlgoDIVzc --delete" # Synchronisation propre, preserve les permissions, supprime l'ancien code sauf ce qui est exclu
+          REMOTE_HOST: ${{ secrets.FTP_SERVER }} # Votre hôte (ex: serveur.o2switch.net)
+          REMOTE_USER: ${{ secrets.FTP_USERNAME }} # Votre identifiant cPanel
+          REMOTE_PORT: 22
+          TARGET: "./jbis/screenshot.jbis.cm/" # Dossier cible sur o2switch
+          SOURCE: "./" # On déploie la racine du projet
+          EXCLUDE: |
+            /.git/
+            /.github/
+            /node_modules/
+            /.env
+            /*.log
             .DS_Store
