@@ -1,11 +1,13 @@
 require("dotenv").config();
 
 const express = require("express");
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-core");
+const chromium = require("@sparticuz/chromium");
 
 const PORT = Number(process.env.PORT || 3100);
 const TOKEN = process.env.INTERNAL_TOKEN || "";
-const NO_SANDBOX = process.env.PUPPETEER_NO_SANDBOX !== "false";
+
+chromium.setGraphicsMode = false;
 
 const app = express();
 app.use(express.json({ limit: "5mb" }));
@@ -21,6 +23,24 @@ function authorize(req, res, next) {
     return res.status(401).json({ error: "Unauthorized" });
   }
   next();
+}
+
+async function launchBrowser() {
+  const localChrome = process.env.CHROME_EXECUTABLE_PATH?.trim();
+  if (localChrome) {
+    return puppeteer.launch({
+      executablePath: localChrome,
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+  }
+
+  return puppeteer.launch({
+    args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
+  });
 }
 
 app.get("/health", (_req, res) => {
@@ -43,10 +63,7 @@ app.post("/v1/pdf/from-html", authorize, async (req, res) => {
 
   let browser;
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: NO_SANDBOX ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
-    });
+    browser = await launchBrowser();
 
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "load", timeout: 60_000 });
